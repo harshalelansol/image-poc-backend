@@ -2,7 +2,8 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 const fs = require("fs");
-const WebSocket = require("ws");
+const http = require("http");
+const { Server } = require("socket.io");
 
 const app = express();
 const port = 3000;
@@ -40,9 +41,13 @@ app.get("/api/images", (req, res) => {
   });
 });
 
-// Set up WebSocket server
-const wss = new WebSocket.Server({ port: 8080 });
-console.log("WebSocket server running on ws://localhost:8080");
+// Create HTTP server and attach Socket.IO
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*", // Frontend URL
+  },
+});
 
 // Watch for changes in the image directory
 const imageDir = path.join("C:/Users/elans/OneDrive/Desktop/images_poc");
@@ -56,16 +61,12 @@ fs.watch(imageDir, (eventType, filename) => {
   ) {
     console.log("Image folder changed:", filename);
 
-    // Notify all connected WebSocket clients
-    wss.clients.forEach((client) => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send("update");
-      }
-    });
+    // Notify all connected Socket.IO clients
+    io.emit("update", "Images Updated"); // Emit "update" event to all clients
   }
 });
 
 // Start the server
-app.listen(port, () => {
+server.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
 });
